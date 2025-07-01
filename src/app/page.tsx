@@ -1,6 +1,21 @@
+"use client"
+
 import { BookOpen, Github, Sparkles, FileText, Zap } from "lucide-react";
+import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleConnectGitHub = () => {
+    if (session) {
+      router.push("/dashboard");
+    } else {
+      signIn("github", { callbackUrl: "/dashboard" });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       {/* Header */}
@@ -10,9 +25,34 @@ export default function Home() {
             <BookOpen className="h-8 w-8 text-blue-600" />
             <span className="text-2xl font-bold text-gray-800 dark:text-white">DocuGenius</span>
           </div>
-          <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            Connect GitHub
-          </button>
+          <div className="flex items-center space-x-4">
+            {session ? (
+              <>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Welcome, {session.user?.name}!
+                </span>
+                <button 
+                  onClick={() => router.push("/dashboard")}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Dashboard
+                </button>
+                <button 
+                  onClick={() => signOut()}
+                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={handleConnectGitHub}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Connect GitHub
+              </button>
+            )}
+          </div>
         </nav>
       </header>
 
@@ -36,9 +76,12 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <button className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-lg font-medium">
+            <button 
+              onClick={handleConnectGitHub}
+              className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-lg font-medium"
+            >
               <Github className="h-5 w-5" />
-              <span>Connect GitHub Repository</span>
+              <span>{session ? "Go to Dashboard" : "Connect GitHub Repository"}</span>
             </button>
             <button className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-lg font-medium">
               View Demo
