@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.55.1",
     "@auth/prisma-adapter": "^2.10.0",
     "@types/next-auth": "^3.13.0",
     "lucide-react": "^0.525.0",

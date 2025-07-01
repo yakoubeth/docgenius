@@ -90,7 +90,10 @@ export default function Dashboard() {
             </p>
           </button>
 
-          <button className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow text-left">
+          <button 
+            onClick={() => router.push("/repositories")}
+            className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow text-left"
+          >
             <div className="flex items-center space-x-3 mb-3">
               <div className="bg-green-100 dark:bg-green-900 w-12 h-12 rounded-lg flex items-center justify-center">
                 <Github className="h-6 w-6 text-green-600 dark:text-green-400" />
