@@ -83,7 +83,10 @@ export default function Home() {
               <Github className="h-5 w-5" />
               <span>{session ? "Go to Dashboard" : "Connect GitHub Repository"}</span>
             </button>
-            <button className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-lg font-medium">
+            <button 
+              onClick={() => router.push("/showcase")}
+              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-lg font-medium"
+            >
               View Demo
             </button>
           </div>

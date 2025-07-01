@@ -1,0 +1,327 @@
+/* Professional Documentation Theme for DocuGenius */
+
+.documentation-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+  color: #333;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #fff;
+}
+
+/* Hero Section Styling */
+.documentation-container h1 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+/* Badge Styling */
+.documentation-container img[src*="shields.io"] {
+  margin: 2px;
+  transition: transform 0.2s ease;
+}
+
+.documentation-container img[src*="shields.io"]:hover {
+  transform: translateY(-1px);
+}
+
+/* Navigation Bar */
+.documentation-container div[align="center"] {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 10px;
+  padding: 15px;
+  margin: 20px 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* Section Headers */
+.documentation-container h2 {
+  color: #2c3e50;
+  border-bottom: 3px solid #3498db;
+  padding-bottom: 10px;
+  margin-top: 40px;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.documentation-container h3 {
+  color: #34495e;
+  font-size: 1.4rem;
+  margin-top: 30px;
+  font-weight: 600;
+}
+
+.documentation-container h4 {
+  color: #5d6d7e;
+  font-size: 1.2rem;
+  margin-top: 25px;
+  font-weight: 500;
+}
+
+/* Code Blocks */
+.documentation-container pre {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  overflow-x: auto;
+  margin: 15px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.documentation-container code {
+  background: #f1f3f4;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  color: #e83e8c;
+}
+
+/* Tables */
+.documentation-container table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.documentation-container th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.documentation-container td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.documentation-container tr:hover {
+  background: #f8f9fa;
+}
+
+/* Details/Summary */
+.documentation-container details {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  margin: 15px 0;
+  overflow: hidden;
+}
+
+.documentation-container summary {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  padding: 15px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.documentation-container summary:hover {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+  transform: translateY(-1px);
+}
+
+.documentation-container details[open] > summary {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.documentation-container details > div {
+  padding: 20px;
+}
+
+/* Lists */
+.documentation-container ul {
+  margin: 15px 0;
+  padding-left: 25px;
+}
+
+.documentation-container li {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+/* Blockquotes */
+.documentation-container blockquote {
+  background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+  border-left: 4px solid #667eea;
+  margin: 20px 0;
+  padding: 15px 20px;
+  border-radius: 0 8px 8px 0;
+}
+
+.documentation-container blockquote p {
+  margin: 0;
+  font-style: italic;
+}
+
+/* Links */
+.documentation-container a {
+  color: #667eea;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.documentation-container a:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+/* Horizontal Rules */
+.documentation-container hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: 40px 0;
+  border-radius: 1px;
+}
+
+/* File Documentation Styling */
+.documentation-container details summary code {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: normal;
+}
+
+/* Emoji Enhancements */
+.documentation-container h2::before,
+.documentation-container h3::before {
+  margin-right: 8px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .documentation-container {
+    padding: 15px;
+  }
+  
+  .documentation-container h1 {
+    font-size: 2rem;
+  }
+  
+  .documentation-container h2 {
+    font-size: 1.5rem;
+  }
+  
+  .documentation-container table {
+    font-size: 0.9rem;
+  }
+  
+  .documentation-container th,
+  .documentation-container td {
+    padding: 10px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .documentation-container {
+    background: white;
+    color: black;
+    box-shadow: none;
+  }
+  
+  .documentation-container img[src*="shields.io"] {
+    display: none;
+  }
+  
+  .documentation-container details {
+    border: 1px solid #ccc;
+  }
+  
+  .documentation-container summary {
+    background: #f0f0f0;
+    color: black;
+  }
+}
+
+/* Scroll to Top Animation */
+.documentation-container {
+  scroll-behavior: smooth;
+}
+
+/* Loading Animation for Dynamic Content */
+.documentation-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.documentation-loading::after {
+  content: "";
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Success/Error Message Styling */
+.documentation-message {
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+  font-weight: 500;
+}
+
+.documentation-message.success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  border: 1px solid #b8daff;
+  color: #155724;
+}
+
+.documentation-message.error {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+/* Syntax Highlighting Enhancement */
+.documentation-container pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* Feature Callout Boxes */
+.documentation-container .feature-box {
+  background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+  border: 1px solid #667eea30;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  position: relative;
+}
+
+.documentation-container .feature-box::before {
+  content: "💡";
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  background: white;
+  padding: 0 10px;
+  font-size: 1.2rem;
+}

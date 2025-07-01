@@ -16,11 +16,15 @@
     "@types/next-auth": "^3.13.0",
     "lucide-react": "^0.525.0",
     "next": "15.3.4",
-    "next-auth": "^4.24.11",
+    "next-auth": "^4.24.7",
     "openai": "^5.8.2",
     "prisma": "^6.11.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

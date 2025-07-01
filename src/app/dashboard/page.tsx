@@ -4,7 +4,15 @@ import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
+import rehypeRaw from 'rehype-raw'
 import { BookOpen, Github, Plus, FileText, LogOut, Download, Eye, Trash2, Clock } from "lucide-react"
+
+// Import professional documentation CSS
+import '../../styles/documentation-theme.css'
+import 'highlight.js/styles/github.css'
 
 interface SavedDocumentation {
   id: string
@@ -143,7 +151,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
           <button 
             onClick={() => router.push("/repositories")}
             className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow text-left"
@@ -171,6 +179,21 @@ export default function Dashboard() {
             </div>
             <p className="text-gray-600 dark:text-gray-400">
               Connect and manage your GitHub repositories
+            </p>
+          </button>
+
+          <button 
+            onClick={() => router.push("/showcase")}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 rounded-xl shadow-sm border border-purple-200 dark:border-purple-700 hover:shadow-md transition-shadow text-left text-white"
+          >
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="bg-white/20 w-12 h-12 rounded-lg flex items-center justify-center">
+                <Eye className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">View Sample Docs</h3>
+            </div>
+            <p className="text-white/90">
+              See the professional quality documentation you&apos;ll get
             </p>
           </button>
         </div>
@@ -206,40 +229,79 @@ export default function Dashboard() {
               </button>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-6">
               {documentations.map((doc) => (
                 <div
                   key={doc.id}
-                  className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+                  className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-500"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                        {doc.repository.name}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {doc.repository.fullName}
-                      </p>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="bg-gradient-to-r from-blue-500 to-purple-600 w-10 h-10 rounded-lg flex items-center justify-center">
+                          <BookOpen className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                            {doc.repository.name}
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {doc.repository.fullName}
+                          </p>
+                        </div>
+                      </div>
+                      
                       {doc.repository.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
                           {doc.repository.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                        <div className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          <span>{doc.filesAnalyzed} files analyzed</span>
+                      
+                      {/* Professional Metrics */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <div>
+                              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Files</p>
+                              <p className="text-sm font-bold text-blue-800 dark:text-blue-200">{doc.filesAnalyzed}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>Generated {new Date(doc.generatedAt).toLocaleDateString()}</span>
+                        
+                        <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            <div>
+                              <p className="text-xs text-green-600 dark:text-green-400 font-medium">Generated</p>
+                              <p className="text-sm font-bold text-green-800 dark:text-green-200">
+                                {new Date(doc.generatedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
                         </div>
+                        
                         {doc.repository.language && (
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-blue-500" />
-                            <span>{doc.repository.language}</span>
+                          <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-purple-500" />
+                              <div>
+                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Language</p>
+                                <p className="text-sm font-bold text-purple-800 dark:text-purple-200">{doc.repository.language}</p>
+                              </div>
+                            </div>
                           </div>
                         )}
+                        
+                        <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                            <div>
+                              <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">Status</p>
+                              <p className="text-sm font-bold text-orange-800 dark:text-orange-200">Ready</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
@@ -249,21 +311,21 @@ export default function Dashboard() {
                           setSelectedDoc(doc)
                           setShowModal(true)
                         }}
-                        className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                        title="View Documentation"
+                        className="p-3 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+                        title="View Professional Documentation"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => downloadMarkdown(doc)}
-                        className="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-                        title="Download Markdown"
+                        className="p-3 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 rounded-lg transition-colors"
+                        title="Download Documentation"
                       >
                         <Download className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => deleteDocumentation(doc.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        className="p-3 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 rounded-lg transition-colors"
                         title="Delete Documentation"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -272,17 +334,17 @@ export default function Dashboard() {
                   </div>
                   
                   {doc.repository.topics.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-1">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       {doc.repository.topics.slice(0, 5).map((topic) => (
                         <span
                           key={topic}
-                          className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full"
+                          className="px-3 py-1 text-xs bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 text-blue-800 dark:text-blue-200 rounded-full font-medium"
                         >
                           {topic}
                         </span>
                       ))}
                       {doc.repository.topics.length > 5 && (
-                        <span className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-full">
                           +{doc.repository.topics.length - 5} more
                         </span>
                       )}
@@ -294,23 +356,32 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Documentation Modal */}
+        {/* Professional Documentation Modal */}
         {showModal && selectedDoc && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {selectedDoc.repository.name} Documentation
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {selectedDoc.repository.fullName} • {selectedDoc.filesAnalyzed} files analyzed
-                    </p>
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden border border-gray-200 dark:border-gray-700">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
+                <div className="flex items-center justify-between text-white">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white/20 w-12 h-12 rounded-lg flex items-center justify-center">
+                      <BookOpen className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold">
+                        {selectedDoc.repository.name}
+                      </h2>
+                      <p className="text-white/80 flex items-center gap-4 mt-1">
+                        <span>{selectedDoc.repository.fullName}</span>
+                        <span>•</span>
+                        <span>{selectedDoc.filesAnalyzed} files analyzed</span>
+                        <span>•</span>
+                        <span>Generated {new Date(selectedDoc.generatedAt).toLocaleDateString()}</span>
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={() => setShowModal(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="text-white/80 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
                   >
                     <span className="sr-only">Close</span>
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -321,25 +392,83 @@ export default function Dashboard() {
               </div>
               
               <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <div 
-                    className="whitespace-pre-wrap"
-                    dangerouslySetInnerHTML={{
-                      __html: selectedDoc.markdownContent
-                        .replace(/```(\w+)?\n([\s\S]*?)\n```/g, '<pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-x-auto"><code>$2</code></pre>')
-                        .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded text-sm">$1</code>')
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                        .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold mt-8 mb-4">$1</h1>')
-                        .replace(/^## (.*$)/gm, '<h2 class="text-2xl font-semibold mt-6 mb-3">$1</h2>')
-                        .replace(/^### (.*$)/gm, '<h3 class="text-xl font-medium mt-4 mb-2">$1</h3>')
-                        .replace(/^#### (.*$)/gm, '<h4 class="text-lg font-medium mt-3 mb-2">$1</h4>')
-                        .replace(/^##### (.*$)/gm, '<h5 class="text-base font-medium mt-2 mb-1">$1</h5>')
-                        .replace(/^- (.*$)/gm, '<li class="ml-4">$1</li>')
-                        .replace(/\n\n/g, '</p><p class="mb-4">')
-                        .replace(/^(?!<[h1-6]|<li|<pre|<\/p>)/gm, '<p class="mb-4">')
+                <div className="documentation-container prose prose-lg max-w-none dark:prose-invert">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight, rehypeRaw]}
+                    components={{
+                      h1: ({ children }) => (
+                        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
+                          {children}
+                        </h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 border-b-2 border-blue-500 pb-2 mb-4 mt-8">
+                          {children}
+                        </h2>
+                      ),
+                      h3: ({ children }) => (
+                        <h3 className="text-xl font-medium text-gray-700 dark:text-gray-300 mb-3 mt-6">
+                          {children}
+                        </h3>
+                      ),
+                      img: ({ src, alt }) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={src} alt={alt} className="rounded-lg shadow-lg max-w-full h-auto my-4" />
+                      ),
+                      code: ({ className, children, ...props }) => {
+                        const match = /language-(\w+)/.exec(className || '')
+                        return match ? (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        ) : (
+                          <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-pink-600 dark:text-pink-400 font-mono text-sm" {...props}>
+                            {children}
+                          </code>
+                        )
+                      },
+                      pre: ({ children }) => (
+                        <pre className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 overflow-x-auto my-4 shadow-sm">
+                          {children}
+                        </pre>
+                      ),
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-4">
+                          <table className="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
+                            {children}
+                          </table>
+                        </div>
+                      ),
+                      th: ({ children }) => (
+                        <th className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 text-left font-semibold">
+                          {children}
+                        </th>
+                      ),
+                      td: ({ children }) => (
+                        <td className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                          {children}
+                        </td>
+                      ),
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 my-4 rounded-r-lg">
+                          {children}
+                        </blockquote>
+                      ),
+                      a: ({ href, children }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline decoration-2 underline-offset-2 transition-colors"
+                        >
+                          {children}
+                        </a>
+                      ),
                     }}
-                  />
+                  >
+                    {selectedDoc.markdownContent}
+                  </ReactMarkdown>
                 </div>
               </div>
               
