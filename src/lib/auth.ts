@@ -27,6 +27,8 @@ export const authOptions = {
       if (account) {
         token.accessToken = account.access_token
         token.githubId = (profile as GitHubProfile)?.id?.toString()
+        // Use githubId as the user ID since we don't have a database
+        token.sub = token.githubId
       }
       return token
     },
@@ -36,6 +38,7 @@ export const authOptions = {
       if (session.user) {
         session.accessToken = token.accessToken as string
         session.user.githubId = token.githubId as string
+        session.user.id = token.githubId as string // Set user.id to githubId
       }
       return session
     },

@@ -7,14 +7,23 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || !session.user?.id) {
+    if (!session || !session.accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" }, 
         { status: 401 }
       )
     }
 
-    const documentations = await DocumentationService.getUserDocumentations(session.user.id)
+    // Use githubId as fallback if user.id is not set (same as generate-documentation)
+    const userId = session.user?.id || session.user?.githubId
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized - No user ID available" }, 
+        { status: 401 }
+      )
+    }
+
+    const documentations = await DocumentationService.getUserDocumentations(userId)
 
     return NextResponse.json({
       success: true,
@@ -35,9 +44,18 @@ export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || !session.user?.id) {
+    if (!session || !session.accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" }, 
+        { status: 401 }
+      )
+    }
+
+    // Use githubId as fallback if user.id is not set (same as generate-documentation)
+    const userId = session.user?.id || session.user?.githubId
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized - No user ID available" }, 
         { status: 401 }
       )
     }
@@ -52,7 +70,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const deleted = await DocumentationService.deleteDocumentation(id, session.user.id)
+    const deleted = await DocumentationService.deleteDocumentation(id, userId)
 
     if (!deleted) {
       return NextResponse.json(

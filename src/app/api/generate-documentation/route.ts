@@ -16,9 +16,27 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || !session.accessToken || !session.user?.id) {
+    // Debug logging
+    console.log("Session debug:", {
+      hasSession: !!session,
+      accessToken: !!session?.accessToken,
+      user: session?.user,
+      userId: session?.user?.id,
+      githubId: session?.user?.githubId
+    })
+    
+    if (!session || !session.accessToken) {
       return NextResponse.json(
-        { error: "Unauthorized" }, 
+        { error: "Unauthorized - No session or access token" }, 
+        { status: 401 }
+      )
+    }
+
+    // Use githubId as fallback if user.id is not set
+    const userId = session.user?.id || session.user?.githubId
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized - No user ID available" }, 
         { status: 401 }
       )
     }
@@ -83,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // Step 5: Save to database
     const savedDocumentation = await DocumentationService.saveDocumentation(
-      session.user.id,
+      userId,
       {
         id: repositoryId,
         name: repositoryInfo.name,

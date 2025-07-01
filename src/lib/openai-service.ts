@@ -116,12 +116,12 @@ Requirements for PERFECT documentation:
 Make this the most comprehensive and useful documentation possible.`
 
       const response = await this.client.chat.completions.create({
-        model: 'o3-2025-04-16',
+        model: 'gpt-4.1-mini-2025-04-14',
         messages: [
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.1,
-        max_tokens: 32000
+        max_tokens: 32000,
+        temperature: 0.1
       })
 
       const content = response.choices[0]?.message?.content
@@ -129,7 +129,15 @@ Make this the most comprehensive and useful documentation possible.`
         throw new Error('No response content from OpenAI')
       }
 
-      const analysis = JSON.parse(content) as ProjectAnalysis
+      // Extract JSON from markdown code blocks if present
+      let jsonContent = content.trim()
+      if (jsonContent.startsWith('```json')) {
+        jsonContent = jsonContent.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      }
+
+      const analysis = JSON.parse(jsonContent) as ProjectAnalysis
       return analysis
 
     } catch (error) {
@@ -198,25 +206,27 @@ Make this the most comprehensive and useful documentation possible.`
       markdown += `**Purpose**: ${doc.purpose}\n\n`
       markdown += `**Summary**: ${doc.summary}\n\n`
 
-      if (doc.dependencies.length > 0) {
+      if (doc.dependencies && doc.dependencies.length > 0) {
         markdown += `**Dependencies**: ${doc.dependencies.map(dep => `\`${dep}\``).join(', ')}\n\n`
       }
 
-      if (doc.keyFunctions.length > 0) {
+      if (doc.keyFunctions && doc.keyFunctions.length > 0) {
         markdown += `#### 🔧 Key Functions\n\n`
         doc.keyFunctions.forEach((func) => {
-          markdown += `##### \`${func.name}\`\n\n`
-          markdown += `${func.description}\n\n`
+          markdown += `##### \`${func.name || 'Unknown Function'}\`\n\n`
+          markdown += `${func.description || 'No description available'}\n\n`
 
-          if (func.parameters.length > 0) {
+          if (func.parameters && func.parameters.length > 0) {
             markdown += `**Parameters:**\n\n`
             func.parameters.forEach((param) => {
-              markdown += `- \`${param.name}\` (\`${param.type}\`) - ${param.description}\n`
+              markdown += `- \`${param.name || 'param'}\` (\`${param.type || 'any'}\`) - ${param.description || 'No description'}\n`
             })
             markdown += `\n`
           }
 
-          markdown += `**Returns**: \`${func.returns.type}\` - ${func.returns.description}\n\n`
+          if (func.returns) {
+            markdown += `**Returns**: \`${func.returns.type || 'void'}\` - ${func.returns.description || 'No description'}\n\n`
+          }
 
           if (func.examples && func.examples.length > 0) {
             markdown += `**Examples:**\n\n`
@@ -227,49 +237,51 @@ Make this the most comprehensive and useful documentation possible.`
         })
       }
 
-      if (doc.classes.length > 0) {
+      if (doc.classes && doc.classes.length > 0) {
         markdown += `#### 🏗️ Classes\n\n`
         doc.classes.forEach((cls) => {
-          markdown += `##### \`${cls.name}\`\n\n`
-          markdown += `${cls.description}\n\n`
+          markdown += `##### \`${cls.name || 'Unknown Class'}\`\n\n`
+          markdown += `${cls.description || 'No description available'}\n\n`
 
-          if (cls.properties.length > 0) {
+          if (cls.properties && cls.properties.length > 0) {
             markdown += `**Properties:**\n\n`
             cls.properties.forEach((prop) => {
-              markdown += `- \`${prop.name}\` (\`${prop.type}\`) - ${prop.description}\n`
+              markdown += `- \`${prop.name || 'property'}\` (\`${prop.type || 'any'}\`) - ${prop.description || 'No description'}\n`
             })
             markdown += `\n`
           }
 
-          if (cls.methods.length > 0) {
+          if (cls.methods && cls.methods.length > 0) {
             markdown += `**Methods:**\n\n`
             cls.methods.forEach((method) => {
-              markdown += `###### \`${method.name}\`\n\n`
-              markdown += `${method.description}\n\n`
+              markdown += `###### \`${method.name || 'method'}\`\n\n`
+              markdown += `${method.description || 'No description'}\n\n`
 
-              if (method.parameters.length > 0) {
+              if (method.parameters && method.parameters.length > 0) {
                 markdown += `**Parameters:**\n\n`
                 method.parameters.forEach((param) => {
-                  markdown += `- \`${param.name}\` (\`${param.type}\`) - ${param.description}\n`
+                  markdown += `- \`${param.name || 'param'}\` (\`${param.type || 'any'}\`) - ${param.description || 'No description'}\n`
                 })
                 markdown += `\n`
               }
 
-              markdown += `**Returns**: \`${method.returns.type}\` - ${method.returns.description}\n\n`
+              if (method.returns) {
+                markdown += `**Returns**: \`${method.returns.type || 'void'}\` - ${method.returns.description || 'No description'}\n\n`
+              }
             })
           }
         })
       }
 
-      if (doc.constants.length > 0) {
+      if (doc.constants && doc.constants.length > 0) {
         markdown += `#### 📊 Constants\n\n`
         doc.constants.forEach((constant) => {
-          markdown += `##### \`${constant.name}\`\n\n`
-          markdown += `- **Type**: \`${constant.type}\`\n`
+          markdown += `##### \`${constant.name || 'Unknown Constant'}\`\n\n`
+          markdown += `- **Type**: \`${constant.type || 'unknown'}\`\n`
           if (constant.value) {
             markdown += `- **Value**: \`${constant.value}\`\n`
           }
-          markdown += `- **Description**: ${constant.description}\n\n`
+          markdown += `- **Description**: ${constant.description || 'No description'}\n\n`
         })
       }
 

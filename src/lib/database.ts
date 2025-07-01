@@ -45,6 +45,20 @@ export class DocumentationService {
       filesAnalyzed: number
     }
   ): Promise<SavedDocumentation> {
+    // First, ensure the user exists in the database
+    const user = await prisma.user.upsert({
+      where: { githubId: userId },
+      update: {
+        updatedAt: new Date(),
+      },
+      create: {
+        githubId: userId,
+        username: `user_${userId}`, // We'll use a placeholder username
+        accessToken: 'placeholder', // Required field, we'll use a placeholder
+        // Other fields will be null/empty for now since we don't have user profile data
+      },
+    })
+
     // Upsert repository
     await prisma.repository.upsert({
       where: { id: repositoryData.id },
@@ -74,7 +88,7 @@ export class DocumentationService {
     const savedDoc = await prisma.documentation.upsert({
       where: {
         userId_repositoryId: {
-          userId,
+          userId: user.id, // Use the actual user ID from the database
           repositoryId: repositoryData.id,
         },
       },
@@ -86,7 +100,7 @@ export class DocumentationService {
         updatedAt: new Date(),
       },
       create: {
-        userId,
+        userId: user.id, // Use the actual user ID from the database
         repositoryId: repositoryData.id,
         title: documentation.title,
         markdownContent: documentation.markdownContent,
@@ -116,9 +130,18 @@ export class DocumentationService {
     }
   }
 
-  static async getUserDocumentations(userId: string): Promise<SavedDocumentation[]> {
+  static async getUserDocumentations(githubId: string): Promise<SavedDocumentation[]> {
+    // First, find the user by GitHub ID to get their database ID
+    const user = await prisma.user.findUnique({
+      where: { githubId },
+    })
+
+    if (!user) {
+      return [] // No user found, return empty array
+    }
+
     const docs = await prisma.documentation.findMany({
-      where: { userId },
+      where: { userId: user.id }, // Use the actual database user ID
       include: {
         repository: true,
       },
@@ -145,11 +168,20 @@ export class DocumentationService {
     }))
   }
 
-  static async getDocumentationById(id: string, userId: string): Promise<SavedDocumentation | null> {
+  static async getDocumentationById(id: string, githubId: string): Promise<SavedDocumentation | null> {
+    // First, find the user by GitHub ID to get their database ID
+    const user = await prisma.user.findUnique({
+      where: { githubId },
+    })
+
+    if (!user) {
+      return null // No user found
+    }
+
     const doc = await prisma.documentation.findFirst({
       where: {
         id,
-        userId,
+        userId: user.id, // Use the actual database user ID
       },
       include: {
         repository: true,
@@ -176,12 +208,21 @@ export class DocumentationService {
     }
   }
 
-  static async deleteDocumentation(id: string, userId: string): Promise<boolean> {
+  static async deleteDocumentation(id: string, githubId: string): Promise<boolean> {
     try {
+      // First, find the user by GitHub ID to get their database ID
+      const user = await prisma.user.findUnique({
+        where: { githubId },
+      })
+
+      if (!user) {
+        return false // No user found
+      }
+
       await prisma.documentation.delete({
         where: {
           id,
-          userId,
+          userId: user.id, // Use the actual database user ID
         },
       })
       return true
