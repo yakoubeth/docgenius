@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import OpenAIService, { type CodeFile, type ProjectAnalysis } from "@/lib/openai-service"
 import RepositoryAnalyzer from "@/lib/repository-analyzer"
-import { DocumentationService } from "@/lib/database"
 
 interface GenerateDocumentationRequest {
   repositoryId: number
@@ -16,7 +15,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || !session.accessToken || !session.user?.id) {
+    if (!session || !session.accessToken) {
       return NextResponse.json(
         { error: "Unauthorized" }, 
         { status: 401 }
@@ -81,26 +80,6 @@ export async function POST(request: NextRequest) {
       allFiles.length
     )
 
-    // Step 5: Save to database
-    const savedDocumentation = await DocumentationService.saveDocumentation(
-      session.user.id,
-      {
-        id: repositoryId,
-        name: repositoryInfo.name,
-        fullName: repositoryInfo.fullName,
-        description: repositoryInfo.description,
-        language: repositoryInfo.language,
-        topics: repositoryInfo.topics,
-        htmlUrl: `https://github.com/${repositoryInfo.fullName}`,
-      },
-      {
-        title: `${repositoryInfo.name} Documentation`,
-        markdownContent: markdownDocumentation,
-        structuredData: analysis as unknown as Record<string, unknown>,
-        filesAnalyzed: allFiles.length,
-      }
-    )
-
     return NextResponse.json({
       success: true,
       repository: {
@@ -109,13 +88,11 @@ export async function POST(request: NextRequest) {
         fullName: repositoryInfo.fullName
       },
       documentation: {
-        id: savedDocumentation.id,
         markdown: markdownDocumentation,
         structured: analysis
       },
       filesAnalyzed: allFiles.length,
-      generatedAt: new Date().toISOString(),
-      saved: true
+      generatedAt: new Date().toISOString()
     })
 
   } catch (error) {
