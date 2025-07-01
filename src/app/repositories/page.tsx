@@ -44,50 +44,7 @@ interface RepositoriesResponse {
   }
 }
 
-interface DocumentationResult {
-  repository: {
-    id: number
-    name: string
-    fullName: string
-  }
-  documentation: {
-    markdown: string
-    structured: {
-      overview: string
-      gettingStarted: string
-      apiReference: string
-      fileDocumentations: Record<string, {
-        summary: string
-        functions: Array<{
-          name: string
-          description: string
-          parameters: Array<{ name: string; type: string; description: string }>
-          returns: { type: string; description: string }
-          examples?: string[]
-        }>
-        classes: Array<{
-          name: string
-          description: string
-          properties: Array<{ name: string; type: string; description: string }>
-          methods: Array<{
-            name: string
-            description: string
-            parameters: Array<{ name: string; type: string; description: string }>
-            returns: { type: string; description: string }
-          }>
-        }>
-        constants: Array<{
-          name: string
-          type: string
-          value?: string
-          description: string
-        }>
-      }>
-    }
-  }
-  filesAnalyzed: number
-  generatedAt: string
-}
+
 
 export default function Repositories() {
   const { data: session, status } = useSession()
@@ -101,9 +58,8 @@ export default function Repositories() {
   
   // Documentation generation state
   const [generatingDocs, setGeneratingDocs] = useState<number | null>(null)
-  const [documentationResult, setDocumentationResult] = useState<DocumentationResult | null>(null)
-  const [showDocumentationModal, setShowDocumentationModal] = useState(false)
   const [documentationError, setDocumentationError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const fetchRepositories = useCallback(async () => {
     try {
@@ -180,6 +136,7 @@ export default function Repositories() {
     try {
       setGeneratingDocs(repository.id)
       setDocumentationError(null)
+      setSuccessMessage(null)
       
       const response = await fetch('/api/generate-documentation', {
         method: 'POST',
@@ -198,9 +155,16 @@ export default function Repositories() {
         throw new Error(errorData.error || 'Failed to generate documentation')
       }
 
-      const result: DocumentationResult = await response.json()
-      setDocumentationResult(result)
-      setShowDocumentationModal(true)
+      // Just consume the response without using the result
+      await response.json()
+      
+      // Show success message instead of modal
+      setSuccessMessage(`✅ Documentation for ${repository.name} has been generated successfully! You can view it from your dashboard.`)
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage(null)
+      }, 5000)
     } catch (err) {
       setDocumentationError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -429,84 +393,33 @@ export default function Repositories() {
           </div>
         )}
 
-        {/* Documentation Modal */}
-        {showDocumentationModal && documentationResult && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      Documentation Generated
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {documentationResult.repository.name} • {documentationResult.filesAnalyzed} files analyzed
-                    </p>
-                  </div>
+        {/* Success Display */}
+        {successMessage && (
+          <div className="fixed top-4 right-4 z-50 max-w-md p-4 bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <div className="h-5 w-5 text-green-500">✅</div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                  Documentation Generated Successfully!
+                </p>
+                <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+                  {successMessage.replace('✅ ', '')}
+                </p>
+                <div className="mt-3 flex gap-2">
                   <button
-                    onClick={() => setShowDocumentationModal(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    onClick={() => router.push("/dashboard")}
+                    className="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded transition-colors"
                   >
-                    <span className="sr-only">Close</span>
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    Go to Dashboard
                   </button>
-                </div>
-              </div>
-              
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <div 
-                    className="whitespace-pre-wrap"
-                    dangerouslySetInnerHTML={{
-                      __html: documentationResult.documentation.markdown
-                        .replace(/```(\w+)?\n([\s\S]*?)\n```/g, '<pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg overflow-x-auto"><code>$2</code></pre>')
-                        .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded text-sm">$1</code>')
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                        .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold mt-8 mb-4">$1</h1>')
-                        .replace(/^## (.*$)/gm, '<h2 class="text-2xl font-semibold mt-6 mb-3">$1</h2>')
-                        .replace(/^### (.*$)/gm, '<h3 class="text-xl font-medium mt-4 mb-2">$1</h3>')
-                        .replace(/^#### (.*$)/gm, '<h4 class="text-lg font-medium mt-3 mb-2">$1</h4>')
-                        .replace(/^##### (.*$)/gm, '<h5 class="text-base font-medium mt-2 mb-1">$1</h5>')
-                        .replace(/^- (.*$)/gm, '<li class="ml-4">$1</li>')
-                        .replace(/\n\n/g, '</p><p class="mb-4">')
-                        .replace(/^(?!<[h1-6]|<li|<pre|<\/p>)/gm, '<p class="mb-4">')
-                    }}
-                  />
-                </div>
-              </div>
-              
-              <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Generated on {new Date(documentationResult.generatedAt).toLocaleDateString()}
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        const blob = new Blob([documentationResult.documentation.markdown], { type: 'text/markdown' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = `${documentationResult.repository.name}-documentation.md`
-                        document.body.appendChild(a)
-                        a.click()
-                        document.body.removeChild(a)
-                        URL.revokeObjectURL(url)
-                      }}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      Download Markdown
-                    </button>
-                    <button
-                      onClick={() => setShowDocumentationModal(false)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setSuccessMessage(null)}
+                    className="text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+                  >
+                    Dismiss
+                  </button>
                 </div>
               </div>
             </div>
