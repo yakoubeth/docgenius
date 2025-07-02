@@ -2,17 +2,39 @@
 
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Image from "next/image"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
-import { BookOpen, Github, FileText, LogOut, Download, Eye, Trash2, Clock, Home, Settings, HelpCircle, Menu, X } from "lucide-react"
+import { 
+  BookOpen, 
+  Github, 
+  FileText, 
+  LogOut, 
+  Download, 
+  Eye, 
+  Trash2, 
+  Clock, 
+  Home, 
+  Settings, 
+  HelpCircle, 
+  Menu, 
+  X,
+  Search, 
+  Star, 
+  GitFork, 
+  Lock, 
+  Globe, 
+  ExternalLink,
+  Code
+} from "lucide-react"
 
 // Import professional documentation CSS
 import '../../styles/documentation-theme.css'
 import '../../styles/dashboard-mobile.css'
+import '../../styles/repositories.css'
 import 'highlight.js/styles/github.css'
 
 interface SavedDocumentation {
@@ -32,14 +54,59 @@ interface SavedDocumentation {
   }
 }
 
+interface Repository {
+  id: number
+  name: string
+  full_name: string
+  description: string | null
+  private: boolean
+  html_url: string
+  language: string | null
+  stargazers_count: number
+  forks_count: number
+  updated_at: string
+  topics: string[]
+  owner: {
+    login: string
+    avatar_url: string
+  }
+}
+
+interface RepositoriesResponse {
+  repositories: Repository[]
+  pagination: {
+    page: number
+    per_page: number
+    total: number
+  }
+}
+
 export default function Dashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  
+  // Dashboard state
   const [documentations, setDocumentations] = useState<SavedDocumentation[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDoc, setSelectedDoc] = useState<SavedDocumentation | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // Navigation state
+  const [activeView, setActiveView] = useState<'dashboard' | 'repositories'>('dashboard')
+  
+  // Repositories state
+  const [repositories, setRepositories] = useState<Repository[]>([])
+  const [repositoriesLoading, setRepositoriesLoading] = useState(false)
+  const [repositoriesError, setRepositoriesError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState("updated")
+  const [filterType, setFilterType] = useState("owner")
+  
+  // Documentation generation state
+  const [generatingDocs, setGeneratingDocs] = useState<number | null>(null)
+  const [documentationError, setDocumentationError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === "loading") return
@@ -63,6 +130,117 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchRepositories = useCallback(async () => {
+    try {
+      setRepositoriesLoading(true)
+      setRepositoriesError(null)
+      
+      const params = new URLSearchParams({
+        sort: sortBy,
+        type: filterType,
+        per_page: "50"
+      })
+
+      const response = await fetch(`/api/repositories?${params}`)
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch repositories")
+      }
+
+      const data: RepositoriesResponse = await response.json()
+      setRepositories(data.repositories)
+    } catch (err) {
+      setRepositoriesError(err instanceof Error ? err.message : "An error occurred")
+    } finally {
+      setRepositoriesLoading(false)
+    }
+  }, [sortBy, filterType])
+
+  useEffect(() => {
+    if (activeView === 'repositories' && session) {
+      fetchRepositories()
+    }
+  }, [activeView, session, fetchRepositories])
+
+  const generateDocumentation = async (repository: Repository) => {
+    try {
+      setGeneratingDocs(repository.id)
+      setDocumentationError(null)
+      setSuccessMessage(null)
+      
+      const response = await fetch('/api/generate-documentation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          repositoryId: repository.id,
+          repositoryName: repository.name,
+          repositoryFullName: repository.full_name,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate documentation')
+      }
+
+      await response.json()
+      
+      setSuccessMessage(`✅ Documentation for ${repository.name} has been generated successfully! You can view it from your dashboard.`)
+      
+      setTimeout(() => {
+        setSuccessMessage(null)
+      }, 5000)
+      
+      // Refresh documentations if we're on dashboard view
+      if (activeView === 'dashboard') {
+        fetchDocumentations()
+      }
+    } catch (err) {
+      setDocumentationError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setGeneratingDocs(null)
+    }
+  }
+
+  const filteredRepositories = repositories.filter(repo =>
+    repo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    repo.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    repo.language?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    })
+  }
+
+  const getLanguageClass = (language: string | null) => {
+    if (!language) return "language-default"
+    
+    const languageMap: { [key: string]: string } = {
+      JavaScript: "language-javascript",
+      TypeScript: "language-typescript",
+      Python: "language-python",
+      Java: "language-java",
+      "C++": "language-cpp",
+      C: "language-c",
+      Go: "language-go",
+      Rust: "language-rust",
+      PHP: "language-php",
+      Ruby: "language-ruby",
+      Swift: "language-swift",
+      Kotlin: "language-kotlin",
+      Dart: "language-dart",
+      HTML: "language-html",
+      CSS: "language-css"
+    }
+    return languageMap[language] || "language-default"
   }
 
   const deleteDocumentation = async (id: string) => {
@@ -90,30 +268,34 @@ export default function Dashboard() {
     URL.revokeObjectURL(url)
   }
 
-  const handleNavigation = (path: string) => {
-    router.push(path)
-    setMobileMenuOpen(false)
+  const handleNavigation = (path: string | null, view?: 'dashboard' | 'repositories') => {
+    if (view) {
+      setActiveView(view)
+      setMobileMenuOpen(false)
+    } else if (path) {
+      router.push(path)
+      setMobileMenuOpen(false)
+    }
   }
 
-  const handleSignOut = () => {
-    signOut()
+  const handleSignOut = async () => {
     setMobileMenuOpen(false)
+    await signOut({ callbackUrl: "/" })
   }
 
   // Navigation items configuration
   const navigationItems = [
-    { label: 'Dashboard', icon: Home, path: null, active: true },
-    { label: 'Repositories', icon: Github, path: '/repositories', active: false },
-    { label: 'Demo', icon: Eye, path: '/showcase', active: false },
+    { label: 'Dashboard', icon: Home, path: null, view: 'dashboard' as const, active: activeView === 'dashboard' },
+    { label: 'Repositories', icon: Github, path: null, view: 'repositories' as const, active: activeView === 'repositories' },
   ]
 
   const accountItems = [
-    { label: 'Settings', icon: Settings, path: null, active: false },
-    { label: 'Help', icon: HelpCircle, path: null, active: false },
+    { label: 'Settings', icon: Settings, path: null, view: null, active: false },
+    { label: 'Help', icon: HelpCircle, path: null, view: null, active: false },
   ]
 
   // Render navigation items
-  const renderNavItems = (items: typeof navigationItems, isAccount = false) => (
+  const renderNavItems = (items: typeof navigationItems | typeof accountItems, isAccount = false) => (
     <>
       {!isAccount && (
         <div className="pt-4">
@@ -127,7 +309,7 @@ export default function Dashboard() {
       {items.map((item) => (
         <button
           key={item.label}
-          onClick={() => item.path ? handleNavigation(item.path) : undefined}
+          onClick={() => item.view ? handleNavigation(null, item.view) : (item.path ? handleNavigation(item.path) : undefined)}
           className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full ${
             item.active
               ? 'bg-blue-50 text-blue-700'
@@ -162,7 +344,7 @@ export default function Dashboard() {
       </div>
       {!isMobile && (
         <button 
-          onClick={() => signOut()}
+          onClick={async () => await signOut({ callbackUrl: "/" })}
           className="text-gray-400 hover:text-gray-600 transition-colors p-1"
           title="Sign out"
         >
@@ -317,6 +499,199 @@ export default function Dashboard() {
     )
   }
 
+  // Repositories Content component
+  const RepositoriesContent = () => {
+    if (repositoriesLoading) {
+      return (
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading repositories...</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (repositoriesError) {
+      return (
+        <div className="text-center py-16">
+          <p className="text-red-600 mb-4">{repositoriesError}</p>
+          <button 
+            onClick={fetchRepositories}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+            {successMessage}
+          </div>
+        )}
+        
+        {documentationError && (
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+            {documentationError}
+          </div>
+        )}
+
+        {/* Search and Filters */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search repositories..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                title="Sort repositories by"
+              >
+                <option value="updated">Recently Updated</option>
+                <option value="created">Recently Created</option>
+                <option value="pushed">Recently Pushed</option>
+                <option value="full_name">Name</option>
+              </select>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                title="Filter repository type"
+              >
+                <option value="owner">My Repositories</option>
+                <option value="member">Member Of</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Repository List */}
+        <div className="grid gap-4">
+          {filteredRepositories.map((repo) => (
+            <div key={repo.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:border-gray-300 transition-colors">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      {repo.private ? (
+                        <Lock className="h-4 w-4 text-amber-500" />
+                      ) : (
+                        <Globe className="h-4 w-4 text-green-500" />
+                      )}
+                      <h3 className="font-semibold text-gray-900 truncate">
+                        {repo.name}
+                      </h3>
+                    </div>
+                    <a
+                      href={repo.html_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      title={`Open ${repo.name} on GitHub`}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                  
+                  {repo.description && (
+                    <p className="text-gray-600 mb-4 line-clamp-2">
+                      {repo.description}
+                    </p>
+                  )}
+                  
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                    {repo.language && (
+                      <div className="flex items-center gap-1">
+                        <div className={`w-3 h-3 rounded-full ${getLanguageClass(repo.language)}`} />
+                        <span>{repo.language}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4" />
+                      <span>{repo.stargazers_count}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <GitFork className="h-4 w-4" />
+                      <span>{repo.forks_count}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      <span>Updated {formatDate(repo.updated_at)}</span>
+                    </div>
+                  </div>
+
+                  {repo.topics.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {repo.topics.slice(0, 5).map((topic) => (
+                        <span
+                          key={topic}
+                          className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded-full"
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                      {repo.topics.length > 5 && (
+                        <span className="px-2 py-1 text-xs text-gray-500 bg-gray-50 rounded-full">
+                          +{repo.topics.length - 5} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="ml-6 flex-shrink-0">
+                  <button
+                    onClick={() => generateDocumentation(repo)}
+                    disabled={generatingDocs === repo.id}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingDocs === repo.id ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4" />
+                        <span>Generate Docs</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {filteredRepositories.length === 0 && !repositoriesLoading && (
+          <div className="text-center py-16">
+            <Code className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No repositories found</h3>
+            <p className="text-gray-600">
+              {searchTerm ? "Try adjusting your search terms or filters." : "No repositories match the current filters."}
+            </p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -383,14 +758,21 @@ export default function Dashboard() {
               {/* Header */}
               <div className="mb-6 sm:mb-8">
                 <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
-                  Welcome back, {session.user?.name?.split(" ")[0]}
+                  {activeView === 'dashboard' 
+                    ? `Welcome back, ${session.user?.name?.split(" ")[0]}` 
+                    : 'Your Repositories'
+                  }
                 </h1>
                 <p className="text-sm sm:text-base text-gray-600">
-                  Manage your documentation projects and generate new documentation for your repositories.
+                  {activeView === 'dashboard'
+                    ? 'Manage your documentation projects and generate new documentation for your repositories.'
+                    : 'Browse and generate documentation for your GitHub repositories.'
+                  }
                 </p>
               </div>
 
-              {/* Documentation Section */}
+              {/* Content based on active view */}
+              {activeView === 'dashboard' ? (
               <div className="mb-6 sm:mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
                   <div>
@@ -435,13 +817,6 @@ export default function Dashboard() {
                         >
                           <Github className="h-4 w-4 sm:h-5 sm:w-5" />
                           Browse Your Repositories
-                        </button>
-                        <button 
-                          onClick={() => router.push("/showcase")}
-                          className="w-full bg-gray-100 text-gray-700 px-6 sm:px-8 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center justify-center gap-2 text-sm sm:text-base"
-                        >
-                          <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
-                          View Demo Documentation
                         </button>
                       </div>
                     </div>
@@ -543,6 +918,9 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
+              ) : (
+                <RepositoriesContent />
+              )}
             </div>
           </main>
         </div>
@@ -600,14 +978,21 @@ export default function Dashboard() {
             {/* Header */}
             <div className="mb-6 sm:mb-8">
               <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
-                Welcome back, {session.user?.name?.split(" ")[0]}
+                {activeView === 'dashboard' 
+                  ? `Welcome back, ${session.user?.name?.split(" ")[0]}` 
+                  : 'Your Repositories'
+                }
               </h1>
               <p className="text-sm sm:text-base text-gray-600">
-                Manage your documentation projects and generate new documentation for your repositories.
+                {activeView === 'dashboard'
+                  ? 'Manage your documentation projects and generate new documentation for your repositories.'
+                  : 'Browse and generate documentation for your GitHub repositories.'
+                }
               </p>
             </div>
 
-            {/* Documentation Section */}
+            {/* Content based on active view */}
+            {activeView === 'dashboard' ? (
             <div className="mb-6 sm:mb-8">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
                 <div>
@@ -652,13 +1037,6 @@ export default function Dashboard() {
                       >
                         <Github className="h-4 w-4 sm:h-5 sm:w-5" />
                         Browse Your Repositories
-                      </button>
-                      <button 
-                        onClick={() => router.push("/showcase")}
-                        className="w-full bg-gray-100 text-gray-700 px-6 sm:px-8 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium flex items-center justify-center gap-2 text-sm sm:text-base"
-                      >
-                        <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
-                        View Demo Documentation
                       </button>
                     </div>
                   </div>
@@ -760,6 +1138,9 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+            ) : (
+              <RepositoriesContent />
+            )}
           </div>
         </main>
       </div>

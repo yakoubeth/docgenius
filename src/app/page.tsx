@@ -3,12 +3,13 @@
 import { BookOpen, Github, Sparkles, FileText, Zap } from "lucide-react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function Home() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  const handleConnectGitHub = () => {
+  const handleGetStarted = () => {
     if (session) {
       router.push("/dashboard");
     } else {
@@ -19,45 +20,63 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
       {/* Header */}
-      <header className="container mx-auto px-6 py-8">
-        <nav className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-800 dark:text-white">DocuGenius</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            {session ? (
-              <>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Welcome, {session.user?.name}!
-                </span>
+      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/20 dark:border-gray-700/20 sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4">
+          <nav className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <BookOpen className="h-7 w-7 text-blue-600" />
+              <span className="text-xl font-bold text-gray-800 dark:text-white">DocuGenius</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              {session ? (
+                <>
+                  <div className="hidden sm:flex items-center space-x-3">
+                    <div className="flex items-center space-x-2">
+                      {session.user?.image && (
+                        <Image 
+                          src={session.user.image} 
+                          alt={session.user.name || 'User avatar'} 
+                          width={24}
+                          height={24}
+                          className="h-6 w-6 rounded-full"
+                        />
+                      )}
+                      <span className="text-sm text-gray-700 dark:text-gray-300 max-w-24 truncate">
+                        {session.user?.name}
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => router.push("/dashboard")}
+                    className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  >
+                    <span className="hidden sm:inline">Dashboard</span>
+                    <span className="sm:hidden">App</span>
+                  </button>
+                  <button 
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors text-sm px-2"
+                  >
+                    <span className="hidden sm:inline">Sign Out</span>
+                    <span className="sm:hidden">Out</span>
+                  </button>
+                </>
+              ) : (
                 <button 
-                  onClick={() => router.push("/dashboard")}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+                  className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center space-x-2"
                 >
-                  Dashboard
+                  <Github className="h-4 w-4" />
+                  <span className="hidden sm:inline">Sign In</span>
                 </button>
-                <button 
-                  onClick={() => signOut()}
-                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <button 
-                onClick={handleConnectGitHub}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Connect GitHub
-              </button>
-            )}
-          </div>
-        </nav>
+              )}
+            </div>
+          </nav>
+        </div>
       </header>
 
       {/* Hero Section */}
-      <main className="container mx-auto px-6 py-16">
+      <main className="container mx-auto px-6 py-16 pt-24">
         <div className="text-center max-w-4xl mx-auto">
           <div className="inline-flex items-center space-x-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-4 py-2 rounded-full text-sm font-medium mb-8">
             <Sparkles className="h-4 w-4" />
@@ -75,19 +94,13 @@ export default function Home() {
             for your codebases using the power of Artificial Intelligence.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          <div className="flex justify-center mb-16">
             <button 
-              onClick={handleConnectGitHub}
-              className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-lg font-medium"
+              onClick={handleGetStarted}
+              className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-lg font-medium justify-center"
             >
               <Github className="h-5 w-5" />
               <span>{session ? "Go to Dashboard" : "Connect GitHub Repository"}</span>
-            </button>
-            <button 
-              onClick={() => router.push("/showcase")}
-              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-8 py-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-lg font-medium"
-            >
-              View Demo
             </button>
           </div>
         </div>
