@@ -98,8 +98,8 @@ export default function Dashboard() {
   const [repositoriesLoading, setRepositoriesLoading] = useState(false)
   const [repositoriesError, setRepositoriesError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [sortBy, setSortBy] = useState("updated")
-  const [filterType, setFilterType] = useState("owner")
+  const [repoUrl, setRepoUrl] = useState("")
+  const [fetchingRepo, setFetchingRepo] = useState(false)
   
   // Documentation generation state
   const [generatingDocs, setGeneratingDocs] = useState<number | null>(null)
@@ -136,8 +136,8 @@ export default function Dashboard() {
       setRepositoriesError(null)
       
       const params = new URLSearchParams({
-        sort: sortBy,
-        type: filterType,
+        sort: "updated",
+        type: "owner",
         per_page: "50"
       })
 
@@ -154,7 +154,62 @@ export default function Dashboard() {
     } finally {
       setRepositoriesLoading(false)
     }
-  }, [sortBy, filterType])
+  }, [])
+
+  const fetchRepositoryByUrl = async (url: string) => {
+    try {
+      setFetchingRepo(true)
+      setRepositoriesError(null)
+      
+      // Extract owner and repo name from GitHub URL
+      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+      if (!match) {
+        throw new Error("Invalid GitHub URL. Please use format: https://github.com/owner/repo")
+      }
+      
+      const [, owner, repo] = match
+      const cleanRepo = repo.replace(/\.git$/, '') // Remove .git suffix if present
+      
+      const response = await fetch(`/api/repositories/fetch-by-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          owner,
+          repo: cleanRepo
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch repository')
+      }
+
+      const repoData: Repository = await response.json()
+      
+      // Add the fetched repo to the top of the list if it's not already there
+      setRepositories(prev => {
+        const exists = prev.find(r => r.id === repoData.id)
+        if (exists) {
+          return prev
+        }
+        return [repoData, ...prev]
+      })
+      
+      setRepoUrl("")
+      setSuccessMessage(`✅ Repository ${repoData.full_name} has been loaded! You can now generate documentation for it.`)
+      
+      setTimeout(() => {
+        setSuccessMessage(null)
+      }, 5000)
+      
+    } catch (err) {
+      setRepositoriesError(err instanceof Error ? err.message : 'Failed to fetch repository')
+    } finally {
+      setFetchingRepo(false)
+    }
+  }
 
   useEffect(() => {
     if (activeView === 'repositories' && session) {
@@ -525,42 +580,56 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Search and Filters */}
+        {/* Search and Add Repository */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Search repositories..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Search repositories..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex gap-3">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                title="Sort repositories by"
-              >
-                <option value="updated">Recently Updated</option>
-                <option value="created">Recently Created</option>
-                <option value="pushed">Recently Pushed</option>
-                <option value="full_name">Name</option>
-              </select>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                title="Filter repository type"
-              >
-                <option value="owner">My Repositories</option>
-                <option value="member">Member Of</option>
-              </select>
+            
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Paste GitHub repository URL (e.g., https://github.com/owner/repo)"
+                    value={repoUrl}
+                    onChange={(e) => setRepoUrl(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  onClick={() => fetchRepositoryByUrl(repoUrl)}
+                  disabled={!repoUrl.trim() || fetchingRepo}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {fetchingRepo ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Fetching...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Github className="h-4 w-4" />
+                      <span>Add Repository</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Add any public GitHub repository to generate documentation for it.
+              </p>
             </div>
           </div>
         </div>
