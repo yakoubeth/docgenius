@@ -41,12 +41,11 @@ export default function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
-    if (status === "loading") return // Still loading
+    if (status === "loading") return
     if (!session) {
-      router.push("/auth/signin") // Not logged in
+      router.push("/auth/signin")
       return
     }
-    
     fetchDocumentations()
   }, [session, status, router])
 
@@ -90,6 +89,233 @@ export default function Dashboard() {
     URL.revokeObjectURL(url)
   }
 
+  const handleNavigation = (path: string) => {
+    router.push(path)
+    setMobileMenuOpen(false)
+  }
+
+  const handleSignOut = () => {
+    signOut()
+    setMobileMenuOpen(false)
+  }
+
+  // Navigation items configuration
+  const navigationItems = [
+    { label: 'Dashboard', icon: Home, path: null, active: true },
+    { label: 'Repositories', icon: Github, path: '/repositories', active: false },
+    { label: 'Demo', icon: Eye, path: '/showcase', active: false },
+  ]
+
+  const accountItems = [
+    { label: 'Settings', icon: Settings, path: null, active: false },
+    { label: 'Help', icon: HelpCircle, path: null, active: false },
+  ]
+
+  // Render navigation items
+  const renderNavItems = (items: typeof navigationItems, isAccount = false) => (
+    <>
+      {!isAccount && (
+        <div className="pt-4">
+          <div className="px-3 mb-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Account
+            </p>
+          </div>
+        </div>
+      )}
+      {items.map((item) => (
+        <button
+          key={item.label}
+          onClick={() => item.path ? handleNavigation(item.path) : undefined}
+          className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full ${
+            item.active
+              ? 'bg-blue-50 text-blue-700'
+              : 'text-gray-700 hover:bg-gray-50'
+          }`}
+          title={item.label}
+        >
+          <item.icon className={`mr-3 flex-shrink-0 h-5 w-5 ${
+            item.active ? 'text-blue-500' : 'text-gray-400'
+          }`} />
+          {item.label}
+        </button>
+      ))}
+    </>
+  )
+
+  // User profile component
+  const UserProfile = ({ isMobile = false }: { isMobile?: boolean }) => (
+    <div className={`flex items-center ${isMobile ? 'gap-3' : 'w-full'}`}>
+      <div className={`rounded-full overflow-hidden ${isMobile ? 'w-10 h-10' : 'w-8 h-8'}`}>
+        <Image 
+          src={session?.user?.image || "/default-avatar.png"} 
+          alt={session?.user?.name || "User"} 
+          width={isMobile ? 40 : 32}
+          height={isMobile ? 40 : 32}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className={isMobile ? 'flex-1' : 'ml-3 flex-1'}>
+        <p className="text-sm font-medium text-gray-900 truncate">{session?.user?.name}</p>
+        <p className="text-xs text-gray-500 truncate">{session?.user?.email}</p>
+      </div>
+      {!isMobile && (
+        <button 
+          onClick={() => signOut()}
+          className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+          title="Sign out"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
+
+  // Documentation Modal component
+  const DocumentationModal = () => {
+    if (!showModal || !selectedDoc) return null
+
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-gray-200">
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <BookOpen className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {selectedDoc.repository.name}
+                  </h2>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <span>{selectedDoc.repository.fullName}</span>
+                    <span>•</span>
+                    <span>{selectedDoc.filesAnalyzed} files analyzed</span>
+                    <span>•</span>
+                    <span>{new Date(selectedDoc.generatedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <span className="sr-only">Close</span>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6 overflow-y-auto max-h-[calc(90vh-160px)]">
+            <div className="documentation-container prose prose-lg max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight, rehypeRaw]}
+                components={{
+                  h1: ({ children }) => (
+                    <h1 className="text-2xl font-bold text-gray-900 mb-6 pb-3 border-b border-gray-200">
+                      {children}
+                    </h1>
+                  ),
+                  h2: ({ children }) => (
+                    <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4 mt-8">
+                      {children}
+                    </h2>
+                  ),
+                  h3: ({ children }) => (
+                    <h3 className="text-lg font-medium text-gray-700 mb-3 mt-6">
+                      {children}
+                    </h3>
+                  ),
+                  img: ({ src, alt }) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={src} alt={alt} className="rounded-lg shadow-sm max-w-full h-auto my-4" />
+                  ),
+                  code: ({ className, children, ...props }) => {
+                    const match = /language-(\w+)/.exec(className || '')
+                    return match ? (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    ) : (
+                      <code className="bg-gray-100 px-2 py-1 rounded text-gray-800 font-mono text-sm" {...props}>
+                        {children}
+                      </code>
+                    )
+                  },
+                  pre: ({ children }) => (
+                    <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto my-4 text-sm">
+                      {children}
+                    </pre>
+                  ),
+                  table: ({ children }) => (
+                    <div className="overflow-x-auto my-4">
+                      <table className="min-w-full bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  th: ({ children }) => (
+                    <th className="bg-gray-50 text-gray-900 px-6 py-3 text-left font-semibold border-b border-gray-200">
+                      {children}
+                    </th>
+                  ),
+                  td: ({ children }) => (
+                    <td className="px-6 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                      {children}
+                    </td>
+                  ),
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-4 border-blue-500 bg-blue-50 p-4 my-4 rounded-r-lg">
+                      {children}
+                    </blockquote>
+                  ),
+                  a: ({ href, children }) => (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 underline decoration-2 underline-offset-2 transition-colors"
+                    >
+                      {children}
+                    </a>
+                  ),
+                }}
+              >
+                {selectedDoc.markdownContent}
+              </ReactMarkdown>
+            </div>
+          </div>
+          
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-gray-500">
+                Generated on {new Date(selectedDoc.generatedAt).toLocaleDateString()}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => downloadMarkdown(selectedDoc)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+                >
+                  Download Markdown
+                </button>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -101,13 +327,11 @@ export default function Dashboard() {
     )
   }
 
-  if (!session) {
-    return null // Will redirect
-  }
+  if (!session) return null
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto">
           {/* Logo */}
@@ -120,83 +344,18 @@ export default function Dashboard() {
           
           {/* Navigation */}
           <nav className="mt-8 flex-1 px-3 space-y-2">
-            <button
-              className="bg-blue-50 text-blue-700 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-            >
-              <Home className="text-blue-500 mr-3 flex-shrink-0 h-5 w-5" />
-              Dashboard
-            </button>
-            
-            <button
-              onClick={() => router.push("/repositories")}
-              className="text-gray-700 hover:bg-gray-50 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-            >
-              <Github className="text-gray-400 mr-3 flex-shrink-0 h-5 w-5" />
-              Repositories
-            </button>
-            
-            <button
-              onClick={() => router.push("/showcase")}
-              className="text-gray-700 hover:bg-gray-50 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-            >
-              <Eye className="text-gray-400 mr-3 flex-shrink-0 h-5 w-5" />
-              Demo
-            </button>
-            
-            <div className="pt-4">
-              <div className="px-3 mb-2">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Account
-                </p>
-              </div>
-              
-              <button 
-                className="text-gray-700 hover:bg-gray-50 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-                title="Settings"
-              >
-                <Settings className="text-gray-400 mr-3 flex-shrink-0 h-5 w-5" />
-                Settings
-              </button>
-              
-              <button 
-                className="text-gray-700 hover:bg-gray-50 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-                title="Help"
-              >
-                <HelpCircle className="text-gray-400 mr-3 flex-shrink-0 h-5 w-5" />
-                Help
-              </button>
-            </div>
+            {renderNavItems(navigationItems)}
+            {renderNavItems(accountItems, true)}
           </nav>
           
           {/* User Profile */}
           <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-            <div className="flex items-center w-full">
-              <div className="w-8 h-8 rounded-full overflow-hidden">
-                <Image 
-                  src={session.user?.image || "/default-avatar.png"} 
-                  alt={session.user?.name || "User"} 
-                  width={32}
-                  height={32}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-900 truncate">{session.user?.name}</p>
-                <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
-              </div>
-              <button 
-                onClick={() => signOut()}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-                title="Sign out"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
+            <UserProfile />
           </div>
         </div>
       </div>
 
-      {/* Mobile menu button and header */}
+      {/* Mobile Header */}
       <div className="lg:hidden">
         <div className="flex items-center justify-between h-16 bg-white border-b border-gray-200 px-4">
           <div className="flex items-center gap-3">
@@ -214,15 +373,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden">
-              <Image 
-                src={session.user?.image || "/default-avatar.png"} 
-                alt={session.user?.name || "User"} 
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            <UserProfile />
             <button 
               onClick={() => signOut()}
               className="text-gray-400 hover:text-gray-600 transition-colors p-2"
@@ -258,83 +409,15 @@ export default function Dashboard() {
 
                 {/* Mobile Navigation */}
                 <nav className="flex-1 px-3 py-4 space-y-2">
-                  <button
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="bg-blue-50 text-blue-700 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-                  >
-                    <Home className="text-blue-500 mr-3 flex-shrink-0 h-5 w-5" />
-                    Dashboard
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      router.push("/repositories")
-                      setMobileMenuOpen(false)
-                    }}
-                    className="text-gray-700 hover:bg-gray-50 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-                  >
-                    <Github className="text-gray-400 mr-3 flex-shrink-0 h-5 w-5" />
-                    Repositories
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      router.push("/showcase")
-                      setMobileMenuOpen(false)
-                    }}
-                    className="text-gray-700 hover:bg-gray-50 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-                  >
-                    <Eye className="text-gray-400 mr-3 flex-shrink-0 h-5 w-5" />
-                    Demo
-                  </button>
-                  
-                  <div className="pt-4">
-                    <div className="px-3 mb-2">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Account
-                      </p>
-                    </div>
-                    
-                    <button 
-                      className="text-gray-700 hover:bg-gray-50 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-                      title="Settings"
-                    >
-                      <Settings className="text-gray-400 mr-3 flex-shrink-0 h-5 w-5" />
-                      Settings
-                    </button>
-                    
-                    <button 
-                      className="text-gray-700 hover:bg-gray-50 group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full"
-                      title="Help"
-                    >
-                      <HelpCircle className="text-gray-400 mr-3 flex-shrink-0 h-5 w-5" />
-                      Help
-                    </button>
-                  </div>
+                  {renderNavItems(navigationItems)}
+                  {renderNavItems(accountItems, true)}
                 </nav>
 
                 {/* Mobile User Profile */}
                 <div className="border-t border-gray-200 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden">
-                      <Image 
-                        src={session.user?.image || "/default-avatar.png"} 
-                        alt={session.user?.name || "User"} 
-                        width={40}
-                        height={40}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{session.user?.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
-                    </div>
-                  </div>
+                  <UserProfile isMobile />
                   <button 
-                    onClick={() => {
-                      signOut()
-                      setMobileMenuOpen(false)
-                    }}
+                    onClick={handleSignOut}
                     className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                   >
                     <LogOut className="h-4 w-4" />
@@ -575,146 +658,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Modern Documentation Modal */}
-        {showModal && selectedDoc && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-gray-200">
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <BookOpen className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        {selectedDoc.repository.name}
-                      </h2>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span>{selectedDoc.repository.fullName}</span>
-                        <span>•</span>
-                        <span>{selectedDoc.filesAnalyzed} files analyzed</span>
-                        <span>•</span>
-                        <span>{new Date(selectedDoc.generatedAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
-                  >
-                    <span className="sr-only">Close</span>
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-160px)]">
-                <div className="documentation-container prose prose-lg max-w-none">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeHighlight, rehypeRaw]}
-                    components={{
-                      h1: ({ children }) => (
-                        <h1 className="text-2xl font-bold text-gray-900 mb-6 pb-3 border-b border-gray-200">
-                          {children}
-                        </h1>
-                      ),
-                      h2: ({ children }) => (
-                        <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4 mt-8">
-                          {children}
-                        </h2>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className="text-lg font-medium text-gray-700 mb-3 mt-6">
-                          {children}
-                        </h3>
-                      ),
-                      img: ({ src, alt }) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={src} alt={alt} className="rounded-lg shadow-sm max-w-full h-auto my-4" />
-                      ),
-                      code: ({ className, children, ...props }) => {
-                        const match = /language-(\w+)/.exec(className || '')
-                        return match ? (
-                          <code className={className} {...props}>
-                            {children}
-                          </code>
-                        ) : (
-                          <code className="bg-gray-100 px-2 py-1 rounded text-gray-800 font-mono text-sm" {...props}>
-                            {children}
-                          </code>
-                        )
-                      },
-                      pre: ({ children }) => (
-                        <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto my-4 text-sm">
-                          {children}
-                        </pre>
-                      ),
-                      table: ({ children }) => (
-                        <div className="overflow-x-auto my-4">
-                          <table className="min-w-full bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
-                            {children}
-                          </table>
-                        </div>
-                      ),
-                      th: ({ children }) => (
-                        <th className="bg-gray-50 text-gray-900 px-6 py-3 text-left font-semibold border-b border-gray-200">
-                          {children}
-                        </th>
-                      ),
-                      td: ({ children }) => (
-                        <td className="px-6 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                          {children}
-                        </td>
-                      ),
-                      blockquote: ({ children }) => (
-                        <blockquote className="border-l-4 border-blue-500 bg-blue-50 p-4 my-4 rounded-r-lg">
-                          {children}
-                        </blockquote>
-                      ),
-                      a: ({ href, children }) => (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 underline decoration-2 underline-offset-2 transition-colors"
-                        >
-                          {children}
-                        </a>
-                      ),
-                    }}
-                  >
-                    {selectedDoc.markdownContent}
-                  </ReactMarkdown>
-                </div>
-              </div>
-              
-              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-gray-500">
-                    Generated on {new Date(selectedDoc.generatedAt).toLocaleDateString()}
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => downloadMarkdown(selectedDoc)}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-                    >
-                      Download Markdown
-                    </button>
-                    <button
-                      onClick={() => setShowModal(false)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <DocumentationModal />
           </div>
         </main>
       </div>
