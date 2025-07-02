@@ -16,6 +16,7 @@ import {
   FileText,
   Code
 } from "lucide-react"
+import "../../styles/repositories.css"
 
 interface Repository {
   id: number
@@ -111,25 +112,27 @@ export default function Repositories() {
     })
   }
 
-  const getLanguageColor = (language: string | null) => {
-    const colors: { [key: string]: string } = {
-      JavaScript: "#f1e05a",
-      TypeScript: "#3178c6",
-      Python: "#3572A5",
-      Java: "#b07219",
-      "C++": "#f34b7d",
-      C: "#555555",
-      Go: "#00ADD8",
-      Rust: "#dea584",
-      PHP: "#4F5D95",
-      Ruby: "#701516",
-      Swift: "#fa7343",
-      Kotlin: "#A97BFF",
-      Dart: "#00B4AB",
-      HTML: "#e34c26",
-      CSS: "#1572B6"
+  const getLanguageClass = (language: string | null) => {
+    if (!language) return "language-default"
+    
+    const languageMap: { [key: string]: string } = {
+      JavaScript: "language-javascript",
+      TypeScript: "language-typescript",
+      Python: "language-python",
+      Java: "language-java",
+      "C++": "language-cpp",
+      C: "language-c",
+      Go: "language-go",
+      Rust: "language-rust",
+      PHP: "language-php",
+      Ruby: "language-ruby",
+      Swift: "language-swift",
+      Kotlin: "language-kotlin",
+      Dart: "language-dart",
+      HTML: "language-html",
+      CSS: "language-css"
     }
-    return colors[language || ""] || "#6b7280"
+    return languageMap[language] || "language-default"
   }
 
   const generateDocumentation = async (repository: Repository) => {
@@ -297,8 +300,7 @@ export default function Repositories() {
                   {repo.language && (
                     <div className="flex items-center gap-1">
                       <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: getLanguageColor(repo.language) }}
+                        className={`language-indicator ${getLanguageClass(repo.language)}`}
                       />
                       <span>{repo.language}</span>
                     </div>
