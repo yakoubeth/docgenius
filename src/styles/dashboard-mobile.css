@@ -1,0 +1,35 @@
+/* Dashboard mobile optimizations */
+@media (max-width: 640px) {
+  /* Ensure text doesn't get too small on mobile */
+  .documentation-container {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  
+  /* Better button spacing on mobile */
+  .mobile-button-group {
+    gap: 8px;
+  }
+  
+  /* Ensure cards don't become too narrow */
+  .documentation-card {
+    min-height: 120px;
+  }
+  
+  /* Better modal sizing on very small screens */
+  @media (max-width: 375px) {
+    .modal-container {
+      margin: 4px;
+      border-radius: 12px;
+    }
+  }
+}
+
+/* Line clamping utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
