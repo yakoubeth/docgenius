@@ -18,8 +18,6 @@ import {
   Trash2, 
   Clock, 
   Home, 
-  Settings, 
-  HelpCircle, 
   Menu, 
   X,
   Search, 
@@ -285,31 +283,17 @@ export default function Dashboard() {
 
   // Navigation items configuration
   const navigationItems = [
-    { label: 'Dashboard', icon: Home, path: null, view: 'dashboard' as const, active: activeView === 'dashboard' },
-    { label: 'Repositories', icon: Github, path: null, view: 'repositories' as const, active: activeView === 'repositories' },
-  ]
-
-  const accountItems = [
-    { label: 'Settings', icon: Settings, path: null, view: null, active: false },
-    { label: 'Help', icon: HelpCircle, path: null, view: null, active: false },
+    { label: 'Dashboard', icon: Home, view: 'dashboard' as const, active: activeView === 'dashboard' },
+    { label: 'Repositories', icon: Github, view: 'repositories' as const, active: activeView === 'repositories' },
   ]
 
   // Render navigation items
-  const renderNavItems = (items: typeof navigationItems | typeof accountItems, isAccount = false) => (
+  const renderNavItems = (items: typeof navigationItems) => (
     <>
-      {!isAccount && (
-        <div className="pt-4">
-          <div className="px-3 mb-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Account
-            </p>
-          </div>
-        </div>
-      )}
       {items.map((item) => (
         <button
           key={item.label}
-          onClick={() => item.view ? handleNavigation(null, item.view) : (item.path ? handleNavigation(item.path) : undefined)}
+          onClick={() => handleNavigation(null, item.view)}
           className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg w-full ${
             item.active
               ? 'bg-blue-50 text-blue-700'
@@ -721,7 +705,6 @@ export default function Dashboard() {
           {/* Navigation */}
           <nav className="mt-8 flex-1 px-3 space-y-2">
             {renderNavItems(navigationItems)}
-            {renderNavItems(accountItems, true)}
           </nav>
           
           {/* User Profile */}
@@ -951,7 +934,6 @@ export default function Dashboard() {
                 {/* Mobile Navigation */}
                 <nav className="flex-1 px-3 py-4 space-y-2">
                   {renderNavItems(navigationItems)}
-                  {renderNavItems(accountItems, true)}
                 </nav>
 
                 {/* Mobile User Profile */}
