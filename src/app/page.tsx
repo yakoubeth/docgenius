@@ -1,7 +1,7 @@
 "use client"
 
 import { BookOpen, Github, Sparkles, FileText, Zap } from "lucide-react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
@@ -13,7 +13,7 @@ export default function Home() {
     if (session) {
       router.push("/dashboard");
     } else {
-      signIn("github", { callbackUrl: "/dashboard" });
+      router.push("/auth/signin");
     }
   };
 
@@ -63,7 +63,7 @@ export default function Home() {
                 </>
               ) : (
                 <button 
-                  onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+                  onClick={() => router.push("/auth/signin")}
                   className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center space-x-2"
                 >
                   <Github className="h-4 w-4" />
