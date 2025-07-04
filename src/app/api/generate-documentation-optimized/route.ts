@@ -1,19 +1,42 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { OptimizedDocumentationService } from "@/lib/optimized-documentation-service"
+import { CodebaseAnalysisService } from "@/lib/codebase-analysis-service"
 import RepositoryAnalyzer from "@/lib/repository-analyzer"
 import { DocumentationService } from "@/lib/database"
 import OpenAI from 'openai'
 
-interface GenerateDocumentationRequest {
+interface AnalyzeCodebaseRequest {
   repositoryId: number
   repositoryName: string
   repositoryFullName: string
   files?: string[]
 }
 
-// Regular POST endpoint for non-streaming requests
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
+import { CodebaseAnalysisService } from "@/lib/codebase-analysis-service"
+import RepositoryAnalyzer from "@/lib/repository-analyzer"
+import { DocumentationService } from "@/lib/database"
+import OpenAI from 'openai'
+
+interface AnalyzeCodebaseRequest {
+  repositoryId: number
+  repositoryName: string
+  repositoryFullName: string
+  analysisType?: 'performance' | 'architecture' | 'complete'
+}
+
+interface StreamEvent {
+  type: 'progress' | 'complete' | 'error'
+  message: string
+  progress: number
+  stage?: string
+  data?: Record<string, unknown>
+}
+
+// Regular POST endpoint for complete codebase analysis
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -33,8 +56,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body: GenerateDocumentationRequest = await request.json()
-    const { repositoryId, repositoryName, repositoryFullName } = body
+    const body: AnalyzeCodebaseRequest = await request.json()
+    const { repositoryId, repositoryName, repositoryFullName, analysisType = 'complete' } = body
 
     if (!repositoryId || !repositoryName || !repositoryFullName) {
       return NextResponse.json(
@@ -58,7 +81,7 @@ export async function POST(request: NextRequest) {
     })
     
     const analyzer = new RepositoryAnalyzer(session.accessToken)
-    const optimizedService = new OptimizedDocumentationService(openai)
+    const analysisService = new CodebaseAnalysisService(openai)
 
     // Get repository info and files
     const [repositoryInfo, allFiles] = await Promise.all([
@@ -68,14 +91,14 @@ export async function POST(request: NextRequest) {
 
     if (allFiles.length === 0) {
       return NextResponse.json(
-        { error: "No suitable files found for documentation generation" },
+        { error: "No suitable files found for analysis" },
         { status: 404 }
       )
     }
 
-    // Generate documentation with the optimized service
+    // Analyze codebase with the new service
     let progress = 0
-    const analysis = await optimizedService.generateDocumentationStream(
+    const analysis = await analysisService.analyzeCodebase(
       allFiles,
       repositoryInfo,
       (event) => {
@@ -84,18 +107,11 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    // Generate markdown using existing service
-    const openaiService = await import('@/lib/openai-service')
-    const openaiInstance = openaiService.default.getInstance()
-    const markdownDocumentation = await openaiInstance.generateMarkdownDocumentation(
-      analysis,
-      repositoryInfo.name,
-      repositoryInfo.fullName,
-      allFiles.length
-    )
+    // Generate analysis report as markdown
+    const markdownReport = await generateAnalysisReport(analysis, repositoryInfo, allFiles.length)
 
-    // Save to database
-    const savedDocumentation = await DocumentationService.saveDocumentation(
+    // Save analysis to database (reusing the documentation structure for now)
+    const savedAnalysis = await DocumentationService.saveDocumentation(
       userId,
       {
         id: repositoryId,
@@ -107,8 +123,8 @@ export async function POST(request: NextRequest) {
         htmlUrl: `https://github.com/${repositoryInfo.fullName}`,
       },
       {
-        title: `${repositoryInfo.name} Documentation`,
-        markdownContent: markdownDocumentation,
+        title: `${repositoryInfo.name} - Codebase Analysis Report`,
+        markdownContent: markdownReport,
         structuredData: analysis as unknown as Record<string, unknown>,
         filesAnalyzed: allFiles.length,
       }
@@ -121,15 +137,20 @@ export async function POST(request: NextRequest) {
         name: repositoryInfo.name,
         fullName: repositoryInfo.fullName
       },
-      documentation: {
-        id: savedDocumentation.id,
-        markdown: markdownDocumentation,
-        structured: analysis
+      analysis: {
+        id: savedAnalysis.id,
+        report: markdownReport,
+        structured: analysis,
+        overallScore: analysis.summary.overallScore,
+        majorIssues: analysis.summary.majorIssues,
+        quickWins: analysis.summary.quickWins,
+        estimatedImprovementTime: analysis.summary.estimatedImprovementTime,
+        potentialPerformanceGain: analysis.summary.potentialPerformanceGain
       },
       filesAnalyzed: allFiles.length,
       generatedAt: new Date().toISOString(),
       saved: true,
-      optimized: true, // Flag to indicate this used the new optimized service
+      analysisType,
       performance: {
         totalFiles: allFiles.length,
         finalProgress: progress
@@ -137,7 +158,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("Error generating documentation:", error)
+    console.error("Error analyzing codebase:", error)
     
     if (error instanceof Error) {
       return NextResponse.json(
@@ -150,6 +171,159 @@ export async function POST(request: NextRequest) {
       { error: "Internal server error" },
       { status: 500 }
     )
+  }
+
+  // Helper method to generate analysis report
+  private async generateAnalysisReport(analysis: any, repositoryInfo: any, filesCount: number): Promise<string> {
+    const now = new Date()
+    const formattedDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
+
+    let markdown = `<div align="center">\n\n`
+    markdown += `# 🔍 ${repositoryInfo.name} - Codebase Analysis Report\n`
+    markdown += `### AI-Powered Performance & Architecture Analysis\n\n`
+    markdown += `[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue?style=for-the-badge&logo=github)](https://github.com/${repositoryInfo.fullName})\n`
+    markdown += `[![Score](https://img.shields.io/badge/Overall%20Score-${analysis.summary.overallScore}%2F100-${analysis.summary.overallScore >= 80 ? 'brightgreen' : analysis.summary.overallScore >= 60 ? 'yellow' : 'red'}?style=for-the-badge&logo=checkmarx)]()\n`
+    markdown += `[![Issues](https://img.shields.io/badge/Major%20Issues-${analysis.summary.majorIssues}-red?style=for-the-badge&logo=alert)]()\n`
+    markdown += `[![Quick Wins](https://img.shields.io/badge/Quick%20Wins-${analysis.summary.quickWins}-green?style=for-the-badge&logo=zap)]()\n\n`
+    markdown += `*Generated by [CodeGenius AI](https://codegenius.dev) • ${formattedDate}*\n\n`
+    markdown += `</div>\n\n`
+    markdown += `---\n\n`
+
+    // Executive Summary
+    markdown += `## 📊 Executive Summary\n\n`
+    markdown += `| Metric | Value | Status |\n`
+    markdown += `|--------|-------|--------|\n`
+    markdown += `| **Overall Score** | ${analysis.summary.overallScore}/100 | ${analysis.summary.overallScore >= 80 ? '🟢 Excellent' : analysis.summary.overallScore >= 60 ? '🟡 Good' : '🔴 Needs Improvement'} |\n`
+    markdown += `| **Major Issues** | ${analysis.summary.majorIssues} | ${analysis.summary.majorIssues === 0 ? '🟢 None' : analysis.summary.majorIssues <= 5 ? '🟡 Manageable' : '🔴 Critical'} |\n`
+    markdown += `| **Quick Wins** | ${analysis.summary.quickWins} | ${analysis.summary.quickWins >= 5 ? '🟢 Many' : analysis.summary.quickWins >= 2 ? '🟡 Some' : '🔴 Few'} |\n`
+    markdown += `| **Est. Improvement Time** | ${analysis.summary.estimatedImprovementTime} | ⏱️ Timeline |\n`
+    markdown += `| **Performance Gain** | ${analysis.summary.potentialPerformanceGain} | 🚀 Potential |\n`
+    markdown += `| **Cost Savings** | ${analysis.summary.costSavings} | 💰 ROI |\n`
+    markdown += `| **Files Analyzed** | ${filesCount} | 📁 Coverage |\n\n`
+
+    // Performance Metrics
+    markdown += `## 📈 Performance Metrics\n\n`
+    markdown += `### Current State\n\n`
+    markdown += `| Category | Score | Assessment |\n`
+    markdown += `|----------|-------|------------|\n`
+    markdown += `| **Complexity** | ${analysis.metrics.overall.complexity}/10 | ${this.getAssessment(analysis.metrics.overall.complexity)} |\n`
+    markdown += `| **Maintainability** | ${analysis.metrics.overall.maintainability}/10 | ${this.getAssessment(analysis.metrics.overall.maintainability)} |\n`
+    markdown += `| **Performance** | ${analysis.metrics.overall.performance}/10 | ${this.getAssessment(analysis.metrics.overall.performance)} |\n`
+    markdown += `| **Security** | ${analysis.metrics.overall.security}/10 | ${this.getAssessment(analysis.metrics.overall.security)} |\n`
+    markdown += `| **Scalability** | ${analysis.metrics.overall.scalability}/10 | ${this.getAssessment(analysis.metrics.overall.scalability)} |\n\n`
+
+    // Critical Issues
+    if (analysis.bottlenecks.length > 0) {
+      markdown += `## 🚨 Critical Issues & Bottlenecks\n\n`
+      const criticalIssues = analysis.bottlenecks.filter(b => b.severity === 'critical' || b.severity === 'high')
+      
+      if (criticalIssues.length > 0) {
+        criticalIssues.slice(0, 8).forEach((issue, index) => {
+          markdown += `### ${index + 1}. ${issue.title}\n\n`
+          markdown += `**Severity**: ${issue.severity.toUpperCase()} • **Type**: ${issue.type} • **Priority**: ${issue.priority}/10\n\n`
+          markdown += `**Impact**: ${issue.impact}\n\n`
+          markdown += `**Description**: ${issue.description}\n\n`
+          markdown += `**Time to Fix**: ${issue.estimatedTimeToFix}\n\n`
+          if (issue.files && issue.files.length > 0) {
+            markdown += `**Affected Files**: ${issue.files.join(', ')}\n\n`
+          }
+          markdown += `---\n\n`
+        })
+      }
+    }
+
+    // Optimization Recommendations
+    markdown += `## 🛠️ Optimization Recommendations\n\n`
+    if (analysis.recommendations.length > 0) {
+      analysis.recommendations.slice(0, 10).forEach((rec, index) => {
+        markdown += `### ${index + 1}. ${rec.title}\n\n`
+        markdown += `**Category**: ${rec.category} • **Priority**: ${rec.priority}/10 • **Difficulty**: ${rec.implementation.difficulty}\n\n`
+        markdown += `**Description**: ${rec.description}\n\n`
+        markdown += `**Benefits**:\n`
+        rec.benefits.forEach(benefit => {
+          markdown += `- ✅ ${benefit}\n`
+        })
+        markdown += `\n**Implementation Time**: ${rec.implementation.timeEstimate}\n\n`
+        markdown += `**Impact**:\n`
+        markdown += `- 🚀 Performance: ${rec.impact.performance}/10\n`
+        markdown += `- 🔧 Maintainability: ${rec.impact.maintainability}/10\n`
+        markdown += `- 📈 Scalability: ${rec.impact.scalability}/10\n`
+        markdown += `- 💰 Cost: ${rec.impact.cost}/10\n\n`
+        markdown += `---\n\n`
+      })
+    }
+
+    // Modernization Plan
+    markdown += `## 🗺️ Modernization Roadmap\n\n`
+    markdown += `### Phase 1: ${analysis.modernizationPlan.phase1.title}\n`
+    markdown += `**Duration**: ${analysis.modernizationPlan.phase1.duration}\n\n`
+    markdown += `**Tasks**:\n`
+    analysis.modernizationPlan.phase1.tasks.forEach(task => {
+      markdown += `- [ ] ${task}\n`
+    })
+    markdown += `\n**Expected Improvement**: ${analysis.modernizationPlan.phase1.expectedImprovement}\n\n`
+
+    markdown += `### Phase 2: ${analysis.modernizationPlan.phase2.title}\n`
+    markdown += `**Duration**: ${analysis.modernizationPlan.phase2.duration}\n\n`
+    markdown += `**Tasks**:\n`
+    analysis.modernizationPlan.phase2.tasks.forEach(task => {
+      markdown += `- [ ] ${task}\n`
+    })
+    markdown += `\n**Expected Improvement**: ${analysis.modernizationPlan.phase2.expectedImprovement}\n\n`
+
+    markdown += `### Phase 3: ${analysis.modernizationPlan.phase3.title}\n`
+    markdown += `**Duration**: ${analysis.modernizationPlan.phase3.duration}\n\n`
+    markdown += `**Tasks**:\n`
+    analysis.modernizationPlan.phase3.tasks.forEach(task => {
+      markdown += `- [ ] ${task}\n`
+    })
+    markdown += `\n**Expected Improvement**: ${analysis.modernizationPlan.phase3.expectedImprovement}\n\n`
+
+    // Competitive Analysis
+    markdown += `## 🏆 Competitive Analysis\n\n`
+    markdown += `### Current vs Industry Best Practices\n\n`
+    markdown += `**Your Current Approach**: ${analysis.competitiveAnalysis.currentApproach}\n\n`
+    markdown += `**Industry Best Practices**:\n`
+    analysis.competitiveAnalysis.industryBestPractices.forEach(practice => {
+      markdown += `- 🌟 ${practice}\n`
+    })
+    markdown += `\n**Gap Analysis**:\n`
+    analysis.competitiveAnalysis.gapAnalysis.forEach(gap => {
+      markdown += `- ❌ ${gap}\n`
+    })
+    markdown += `\n**Recommendations**:\n`
+    analysis.competitiveAnalysis.recommendations.forEach(rec => {
+      markdown += `- 💡 ${rec}\n`
+    })
+    markdown += `\n`
+
+    // Footer
+    markdown += `---\n\n`
+    markdown += `<div align="center">\n\n`
+    markdown += `### 🤖 Powered by CodeGenius AI\n\n`
+    markdown += `This analysis was generated by **CodeGenius AI** - the intelligent codebase optimization platform.\n\n`
+    markdown += `**Transform your codebase with AI-powered insights:**\n`
+    markdown += `- 🔍 **Deep Analysis**: Comprehensive codebase examination\n`
+    markdown += `- 🚀 **Performance Optimization**: Identify bottlenecks and improvements\n`
+    markdown += `- 📊 **Actionable Insights**: Prioritized recommendations with ROI\n`
+    markdown += `- 🛠️ **Implementation Guidance**: Step-by-step improvement plans\n\n`
+    markdown += `[![Try CodeGenius](https://img.shields.io/badge/Try%20CodeGenius-Analyze%20Your%20Code-brightgreen?style=for-the-badge&logo=robot)](https://codegenius.dev)\n\n`
+    markdown += `---\n\n`
+    markdown += `<sub>📅 Generated: ${formattedDate} | 🤖 Powered by CodeGenius AI | ⭐ [Star this analysis](https://github.com/${repositoryInfo.fullName}) if it helped you!</sub>\n\n`
+    markdown += `</div>`
+
+    return markdown
+  }
+
+  private getAssessment(score: number): string {
+    if (score >= 8) return '🟢 Excellent'
+    if (score >= 6) return '🟡 Good'
+    if (score >= 4) return '🟠 Fair'
+    return '🔴 Poor'
   }
 }
 
